@@ -186,15 +186,15 @@ if [[ -z $INPUT ]]; then
 			
 			# Gets ASN data base 
 			if [ ! -e "$MASSDIR/ip2asn-v4.tsv" ]; then
-			    wget https://iptoasn.com/data/ip2asn-v4.tsv.gz $MASSDIR
-			    gunzip $MASSDIR/ip2asn-v4.tsv.gz
+			    wget https://iptoasn.com/data/ip2asn-v4.tsv.gz $MASSDIR/
+			    gunzip $MASSDIR/ip2asn-v4.tsv.gz $MASSDIR/
 			fi
 
 			COMPANY=$(echo $DOMAIN | awk -F "." '{print$1}')\
 
-			ASN=$(python3 $MASSDIR/scrppr.py $COMPANY  | grep -o 'AS[0-9]\+' | head -n1 | awk -F "S" '{print $2}')
+			ASN=$(python3 $MASSDIR/asnScraper.py $COMPANY  | grep -o 'AS[0-9]\+' | head -n1 | awk -F "S" '{print $2}')
 
-			IPRANGE=$(cat $MASSDIR.ip2asn-v4.tsv | grep -i "$ASN" | grep -i "$COMPANY" | awk -F " " '{print $1" "$2}')
+			IPRANGE=$(cat $MASSDIR/ip2asn-v4.tsv | grep -i "$ASN" | grep -i "$COMPANY" | awk -F " " '{print $1" "$2}')
 
 			# Checks for asn in data and returns ip-range. Will prompt user to enter company name if no ranges found. 
 			if [[ -s $IPRANGE ]]; then
