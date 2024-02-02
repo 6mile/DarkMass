@@ -1,6 +1,7 @@
 #!/bin/bash
 # This script requires: nuclei, wafw00f, amass, chaos, dnsx, httpx,
-# github-subdomains, aws-cli and tor must be running on port 9050
+# github-subdomains, aws-cli, hakip2host and tor must be running 
+# on port 9050
 #
 # Copyright 2024 by 6mile/Paul McCarty.  All rights reserved.
 #
