@@ -25,7 +25,7 @@ EOF
 # You should change these to suite your needs
 TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 GITHUBTOKEN=ghp_aaaaBBBBccccDDDDeeeeFFFFggggHHHHiiii
-MASSDIR=/root/projects/darkmass
+MASSDIR=darkmass/tmp
 S3BUCKET=darkmass
 
 if [[ -z $@ ]]; then
@@ -185,19 +185,20 @@ if [[ -z $INPUT ]]; then
 			}
 			
 			# Gets ASN data base 
-			if [ ! -e "$MASSDIR/ip2asn-v4.tsv" ]; then
-			    wget https://iptoasn.com/data/ip2asn-v4.tsv.gz $MASSDIR/
-			    gunzip $MASSDIR/ip2asn-v4.tsv.gz $MASSDIR/
+			if [ ! -e "ip2asn-v4.tsv" ]; then
+			    wget https://iptoasn.com/data/ip2asn-v4.tsv.gz 
+			    gunzip ip2asn-v4.tsv.gz 
 			fi
 
 			COMPANY=$(echo $DOMAIN | awk -F "." '{print$1}')\
 
-			ASN=$(python3 $MASSDIR/asnScraper.py $COMPANY  | grep -o 'AS[0-9]\+' | head -n1 | awk -F "S" '{print $2}')
+			ASN=$(python3 asnScraper.py $COMPANY  | grep -o 'AS[0-9]\+' | head -n1 | awk -F "S" '{print $2}')
 
-			IPRANGE=$(cat $MASSDIR/ip2asn-v4.tsv | grep -i "$ASN" | grep -i "$COMPANY" | awk -F " " '{print $1" "$2}')
-
+			cat ip2asn-v4.tsv | grep -i "$ASN" | grep -i "$COMPANY" | awk -F " " '{print $1" "$2}' > $OUT.ipRange
+			
 			# Checks for asn in data and returns ip-range. Will prompt user to enter company name if no ranges found. 
-			if [[ -s $IPRANGE ]]; then
+			
+			if [ -s $OUT.ipRange ] ; then
 			    while read line; do
 			        start_ip=$(echo $line | awk -F " " '{print $1}')
 			        end_ip=$(echo $line | awk -F " " '{print $2}')
@@ -206,17 +207,15 @@ if [[ -z $INPUT ]]; then
 
 			        for ((int = start_int; int <= end_int; int++)); do
 			            current_ip=$(int_to_ip "$int")
-			            echo "$current_ip" >> $IPLIST
+			            echo "$current_ip" >> $OUT.ipList
 			        done
-			    done < $IPRANGE
+			    done < $OUT.ipRange
 			fi
-
 			# Scans IP range for extra domainns
-			cat $IPLIST | hakip2host | sort -u >> $OUT.tmp
+			cat $OUT.ipList | hakip2host | sort -u >> $OUT.tmp
 			cat $OUT.tmp | awk -F " " '{print$3}' | sort -u | grep -v "*" >> $OUT.raw
 			rm $OUT.tmp 
 		fi
-
         cat $OUT.raw | sort -u | dnsx -silent >> $LIST
         cat $OUT.list | sort -u | httpx -silent >> $OUT.http
 elif [[ -n $INPUT ]] && [[ $USEAMASS == "1" ]]; then
