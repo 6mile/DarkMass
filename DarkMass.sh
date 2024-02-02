@@ -44,6 +44,7 @@ while [[ "$#" -gt 0 ]]; do
         -i|--input) INPUT="$2"; shift ;;
         -ks|--kitchensink) KITCHENSINK="1" ;;
         -l|--silent) SILENT="1";exec > /dev/null ;;
+		-as|--asnsubdomain) ASNSUBDOMAIN="1" ;;
         -n|--asn) ASN="1" ;;
         -p|--port) PORTSCAN="1" ;;
         -r|--report) REPORTING="1" ;;
@@ -70,6 +71,7 @@ if [[ $SHOWHELP == "1" ]]; then
         echo "-i|--input        Provide a list of hosts to use instead of running subdomain enumeration."
         echo "-ks|--kitchensink	Throw the kitchen sink at it. Use all available parameters except Tor."
         echo "-l|--silent       Silent mode.  ie., Don't send stdout to your terminal."
+	echo "-as|--asnsubdomain	Gather additional subdomains by scanning entire IP range of companies ASN."
 	echo "-n|--asn          Find the ASN or hosting information for all assets."
 	echo "-p|--port         Port scan the assets using Naabu."
 	echo "-r|--report       Send the output to the Elasticsearch reporting server."
@@ -168,6 +170,51 @@ if [[ -z $INPUT ]]; then
         #github-subdomains -raw -d $DOMAIN -t $GITHUBTOKEN >> $OUT.raw
         github-subdomains -raw -d $DOMAIN -t $GITHUBTOKEN -o $OUT.raw
         if [[ $USEAMASS == "1" ]]; then amass enum -d $DOMAIN >> $OUT.raw;fi
+
+		if [[ $ASNSUBDOMAIN == "1" ]]; then
+			ip_to_int() {
+    			local ip="$1"
+    			IFS=. read -r i1 i2 i3 i4 <<< "$ip"
+    			echo "$(( (i1<<24) + (i2<<16) + (i3<<8) + i4 ))"
+			}
+			
+			int_to_ip() {
+			    local int="$1"
+			    echo "$(( (int>>24)&255 )).$(( (int>>16)&255 )).$(( (int>>8)&255 )).$(( int&255 ))"
+			}
+			
+			# Gets ASN data base 
+			if [ ! -e "$MASSDIR/ip2asn-v4.tsv" ]; then
+			    wget https://iptoasn.com/data/ip2asn-v4.tsv.gz $MASSDIR
+			    gunzip $MASSDIR/ip2asn-v4.tsv.gz
+			fi
+
+			COMPANY=$(echo $DOMAIN | awk -F "." '{print$1}')\
+
+			ASN=$(python3 $MASSDIR/scrppr.py $COMPANY  | grep -o 'AS[0-9]\+' | head -n1 | awk -F "S" '{print $2}')
+
+			IPRANGE=$(cat $MASSDIR.ip2asn-v4.tsv | grep -i "$ASN" | grep -i "$COMPANY" | awk -F " " '{print $1" "$2}')
+
+			# Checks for asn in data and returns ip-range. Will prompt user to enter company name if no ranges found. 
+			if [[ -s $IPRANGE ]]; then
+			    while read line; do
+			        start_ip=$(echo $line | awk -F " " '{print $1}')
+			        end_ip=$(echo $line | awk -F " " '{print $2}')
+			        start_int=$(ip_to_int "$start_ip")
+			        end_int=$(ip_to_int "$end_ip")
+
+			        for ((int = start_int; int <= end_int; int++)); do
+			            current_ip=$(int_to_ip "$int")
+			            echo "$current_ip" >> $IPLIST
+			        done
+			    done < $IPRANGE
+			fi
+
+			# Scans IP range for extra domainns
+			cat $IPLIST | hakip2host | sort -u >> $OUT.tmp
+			cat $OUT.tmp | awk -F " " '{print$3}' | sort -u | grep -v "*" >> $OUT.raw
+			rm $OUT.tmp 
+		fi
 
         cat $OUT.raw | sort -u | dnsx -silent >> $LIST
         cat $OUT.list | sort -u | httpx -silent >> $OUT.http
@@ -365,4 +412,3 @@ elif [[ -f $OUT.nuclei.json ]]; then
 fi
 if [[ -f $OUT.txt ]]; then rm $OUT.txt; fi
 if [[ -f $OUT.raw ]]; then rm $OUT.raw; fi
-
