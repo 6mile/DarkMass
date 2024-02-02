@@ -173,50 +173,50 @@ if [[ -z $INPUT ]]; then
         github-subdomains -raw -d $DOMAIN -t $GITHUBTOKEN -o $OUT.raw
         if [[ $USEAMASS == "1" ]]; then amass enum -d $DOMAIN >> $OUT.raw;fi
 
-		if [[ $ASNSUBDOMAIN == "1" ]]; then
-			ip_to_int() {
-    			local ip="$1"
-    			IFS=. read -r i1 i2 i3 i4 <<< "$ip"
-    			echo "$(( (i1<<24) + (i2<<16) + (i3<<8) + i4 ))"
-			}
+	if [[ $ASNSUBDOMAIN == "1" ]]; then
+		ip_to_int() {
+    		local ip="$1"
+    		IFS=. read -r i1 i2 i3 i4 <<< "$ip"
+    		echo "$(( (i1<<24) + (i2<<16) + (i3<<8) + i4 ))"
+		}
+		
+		int_to_ip() {
+		    local int="$1"
+		    echo "$(( (int>>24)&255 )).$(( (int>>16)&255 )).$(( (int>>8)&255 )).$(( int&255 ))"
+		}
 			
-			int_to_ip() {
-			    local int="$1"
-			    echo "$(( (int>>24)&255 )).$(( (int>>16)&255 )).$(( (int>>8)&255 )).$(( int&255 ))"
-			}
-			
-			# Gets ASN data base 
-			if [ ! -e "ip2asn-v4.tsv" ]; then
-			    wget https://iptoasn.com/data/ip2asn-v4.tsv.gz 
-			    gunzip ip2asn-v4.tsv.gz 
-			fi
+		# Gets ASN data base 
+		if [ ! -e "ip2asn-v4.tsv" ]; then
+		    wget https://iptoasn.com/data/ip2asn-v4.tsv.gz 
+		    gunzip ip2asn-v4.tsv.gz 
+		fi
 
-			COMPANY=$(echo $DOMAIN | awk -F "." '{print$1}')\
+		COMPANY=$(echo $DOMAIN | awk -F "." '{print$1}')\
 
-			ASN=$(python3 asnScraper.py $COMPANY  | grep -o 'AS[0-9]\+' | head -n1 | awk -F "S" '{print $2}')
+		ASN=$(python3 asnScraper.py $COMPANY  | grep -o 'AS[0-9]\+' | head -n1 | awk -F "S" '{print $2}')
 
-			cat ip2asn-v4.tsv | grep -i "$ASN" | grep -i "$COMPANY" | awk -F " " '{print $1" "$2}' > $OUT.ipRange
+		cat ip2asn-v4.tsv | grep -i "$ASN" | grep -i "$COMPANY" | awk -F " " '{print $1" "$2}' > $OUT.ipRange
 			
-			# Checks for asn in data and returns ip-range. Will prompt user to enter company name if no ranges found. 
+		# Checks for asn in data and returns ip-range. Will prompt user to enter company name if no ranges found. 
 			
-			if [ -s $OUT.ipRange ] ; then
-			    while read line; do
-			        start_ip=$(echo $line | awk -F " " '{print $1}')
-			        end_ip=$(echo $line | awk -F " " '{print $2}')
-			        start_int=$(ip_to_int "$start_ip")
-			        end_int=$(ip_to_int "$end_ip")
+		if [ -s $OUT.ipRange ] ; then
+	    		while read line; do
+		        	start_ip=$(echo $line | awk -F " " '{print $1}')
+		        	end_ip=$(echo $line | awk -F " " '{print $2}')
+		        	start_int=$(ip_to_int "$start_ip")
+		        	end_int=$(ip_to_int "$end_ip")
 
 			        for ((int = start_int; int <= end_int; int++)); do
 			            current_ip=$(int_to_ip "$int")
 			            echo "$current_ip" >> $OUT.ipList
-			        done
-			    done < $OUT.ipRange
-			fi
-			# Scans IP range for extra domainns
-			cat $OUT.ipList | hakip2host | sort -u >> $OUT.tmp
-			cat $OUT.tmp | awk -F " " '{print$3}' | sort -u | grep -v "*" >> $OUT.raw
-			rm $OUT.tmp 
+		        	done
+			done < $OUT.ipRange
 		fi
+		# Scans IP range for extra domainns
+		cat $OUT.ipList | hakip2host | sort -u >> $OUT.tmp
+		cat $OUT.tmp | awk -F " " '{print$3}' | sort -u | grep -v "*" >> $OUT.raw
+		rm $OUT.tmp 
+	fi
         cat $OUT.raw | sort -u | dnsx -silent >> $LIST
         cat $OUT.list | sort -u | httpx -silent >> $OUT.http
 elif [[ -n $INPUT ]] && [[ $USEAMASS == "1" ]]; then
