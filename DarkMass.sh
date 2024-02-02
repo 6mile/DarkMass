@@ -25,7 +25,7 @@ EOF
 # You should change these to suite your needs
 TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 GITHUBTOKEN=ghp_aaaaBBBBccccDDDDeeeeFFFFggggHHHHiiii
-MASSDIR=darkmass/tmp
+MASSDIR=/root/projects/darkmass
 S3BUCKET=darkmass
 
 if [[ -z $@ ]]; then
