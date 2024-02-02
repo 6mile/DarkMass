@@ -25,7 +25,7 @@ EOF
 # You should change these to suite your needs
 TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 GITHUBTOKEN=ghp_aaaaBBBBccccDDDDeeeeFFFFggggHHHHiiii
-MASSDIR=/root/projects/darkmass
+MASSDIR=darkmass/tmp
 S3BUCKET=darkmass
 
 if [[ -z $@ ]]; then
@@ -139,6 +139,7 @@ if [[ $KITCHENSINK == "1" ]];then
 	REPORTING="1";
 	DOSCAN="1";
 	FINDWAF="1";
+	ASNSUBDOMAIN="1";
 fi
 
 # You probably shouldn't chnge these three globals
@@ -412,3 +413,6 @@ elif [[ -f $OUT.nuclei.json ]]; then
 fi
 if [[ -f $OUT.txt ]]; then rm $OUT.txt; fi
 if [[ -f $OUT.raw ]]; then rm $OUT.raw; fi
+if [[ -f $OUT.ipRange ]]; then rm $OUT.ipRange; fi
+if [[ -f $OUT.ipList ]]; then rm $OUT.ipList; fi
+
